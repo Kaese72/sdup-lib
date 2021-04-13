@@ -31,7 +31,7 @@ func (state AttributeState) Equivalent(other AttributeState) bool {
 		return *state.Numeric == *other.Numeric
 
 	} else if state.Text != nil && other.Text != nil {
-		return *state.Text == *state.Text
+		return *state.Text == *other.Text
 	}
 
 	//log.Log(log.Error, "Could not find common state", nil)

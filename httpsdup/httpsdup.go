@@ -2,15 +2,18 @@ package httpsdup
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/Kaese72/sdup-lib/sduptemplates"
+	"github.com/Kaese72/sdup-lib/subscription"
 	"github.com/gorilla/mux"
 )
 
+//InitHTTPMux initializes a HTTP server mux with the appropriate paths
 func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
-	subs := NewSubscriptions(target.DeviceUpdates())
+	subs := subscription.NewSubscriptions(target.DeviceUpdates())
 	router := mux.NewRouter()
 	router.HandleFunc("/discovery", func(writer http.ResponseWriter, reader *http.Request) {
 		devices, err := target.Devices()
@@ -27,7 +30,44 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 		}
 		writer.Write(jsonEncoded)
 	})
-	router.HandleFunc("/subscribe", subs.Subscribe)
+	router.HandleFunc("/subscribe", func(writer http.ResponseWriter, reader *http.Request) {
+		//log.Log(log.Info, "Started SSE handler", nil)
+		// prepare the header
+		writer.Header().Set("Content-Type", "text/event-stream")
+		writer.Header().Set("Cache-Control", "no-cache")
+		writer.Header().Set("Connection", "keep-alive")
+		writer.Header().Set("Access-Control-Allow-Origin", "*")
+
+		flusher, _ := writer.(http.Flusher)
+
+		subscription := subs.Subscribe()
+		doneChan := reader.Context().Done()
+		for {
+
+			select {
+			// connection is closed then defer will be executed
+			case <-doneChan:
+				// Communicate the cancellation of this subscription
+				subs.UnSubscribe(subscription)
+				doneChan = nil
+
+			case event, ok := <-subscription.Updates():
+				if ok {
+					jsonString, err := json.Marshal(event)
+					if err != nil {
+						//log.Log(log.Error, "Failed to Marshal device update", nil)
+
+					} else {
+						fmt.Fprintf(writer, "data: %s\n\n", jsonString)
+						flusher.Flush()
+					}
+
+				} else {
+					return
+				}
+			}
+		}
+	})
 
 	router.HandleFunc("/capability/{deviceID}/{capabilityKey}", func(writer http.ResponseWriter, reader *http.Request) {
 		vars := mux.Vars(reader)
