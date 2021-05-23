@@ -13,7 +13,12 @@ import (
 
 //InitHTTPMux initializes a HTTP server mux with the appropriate paths
 func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
-	subs := subscription.NewSubscriptions(target.DeviceUpdates())
+	_, channel, err := target.Initialize()
+	if err != nil {
+		//FIXME No reason to panic
+		panic(err)
+	}
+	subs := subscription.NewSubscriptions(channel)
 	router := mux.NewRouter()
 	router.HandleFunc("/discovery", func(writer http.ResponseWriter, reader *http.Request) {
 		devices, err := target.Devices()

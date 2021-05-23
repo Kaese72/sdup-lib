@@ -51,6 +51,7 @@ func (subscriptions *subsImpl) eventRoutine() {
 			func() {
 				subscriptions.subsMutex.Lock()
 				defer subscriptions.subsMutex.Unlock()
+				subscriptions.subscriptions[index].Close()
 				subscriptions.subscriptions[index] = subscriptions.subscriptions[len(subscriptions.subscriptions)-1]
 				subscriptions.subscriptions = subscriptions.subscriptions[:len(subscriptions.subscriptions)-1]
 			}()
