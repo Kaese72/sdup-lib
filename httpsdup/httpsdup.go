@@ -13,7 +13,7 @@ import (
 
 //InitHTTPMux initializes a HTTP server mux with the appropriate paths
 func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
-	_, channel, err := target.Initialize()
+	channel, err := target.Initialize()
 	if err != nil {
 		//FIXME No reason to panic
 		panic(err)
@@ -35,6 +35,7 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 		}
 		writer.Write(jsonEncoded)
 	})
+
 	router.HandleFunc("/subscribe", func(writer http.ResponseWriter, reader *http.Request) {
 		//log.Log(log.Info, "Started SSE handler", nil)
 		// prepare the header
@@ -46,6 +47,17 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 		flusher, _ := writer.(http.Flusher)
 
 		subscription := subs.Subscribe()
+		defer subs.UnSubscribe(subscription)
+
+		devices, err := target.Devices()
+		//FIXME Small race condition where we may get updates to a state that have already been sent by the initializer. However, we are pretty much guaranteed to end up in the correct state
+		if err != nil {
+			return
+		}
+		for _, device := range devices {
+			sendEvent(writer, flusher, device.SpecToInitialUpdate())
+		}
+
 		doneChan := reader.Context().Done()
 		for {
 
@@ -53,20 +65,11 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 			// connection is closed then defer will be executed
 			case <-doneChan:
 				// Communicate the cancellation of this subscription
-				subs.UnSubscribe(subscription)
 				doneChan = nil
 
 			case event, ok := <-subscription.Updates():
 				if ok {
-					jsonString, err := json.Marshal(event)
-					if err != nil {
-						//log.Log(log.Error, "Failed to Marshal device update", nil)
-
-					} else {
-						fmt.Fprintf(writer, "data: %s\n\n", jsonString)
-						flusher.Flush()
-					}
-
+					sendEvent(writer, flusher, event)
 				} else {
 					return
 				}
@@ -100,6 +103,17 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 		http.Error(writer, "OK", http.StatusOK)
 
 	}).Methods("POST")
-	//router.PathPrefix("/ui/").Handler(http.StripPrefix("/ui/", http.FileServer(http.Dir("./ui/"))))
 	return router
+}
+
+func sendEvent(writer http.ResponseWriter, flusher http.Flusher, event sduptemplates.DeviceUpdate) {
+	jsonString, err := json.Marshal(event)
+	if err != nil {
+		//log.Log(log.Error, "Failed to Marshal device update", nil)
+
+	} else {
+		fmt.Fprintf(writer, "data: %s\n\n", jsonString)
+		flusher.Flush()
+	}
+
 }

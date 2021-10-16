@@ -10,8 +10,22 @@ type DeviceSpec struct {
 	Capabilities CapabilitySpecMap `json:"capabilities"`
 }
 
+func (spec DeviceSpec) SpecToInitialUpdate() DeviceUpdate {
+	diff := AttributeStateMap{}
+	for key, val := range spec.Attributes {
+		diff[key] = val.AttributeState
+	}
+
+	return DeviceUpdate{
+		ID:             spec.ID,
+		AttributesDiff: diff,
+	}
+}
+
 //DeviceDiff defines how changes in a device are communicated over SDUP
 type DeviceUpdate struct {
 	ID             DeviceID          `json:"id"`
 	AttributesDiff AttributeStateMap `json:"attributes"`
+	//Lost indicates that the device is no longer available. This indicates permanence, and does not include temporary disconnects
+	Lost bool `json:"lost"`
 }

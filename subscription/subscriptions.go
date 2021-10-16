@@ -1,8 +1,6 @@
 package subscription
 
 import (
-	"sync"
-
 	"github.com/Kaese72/sdup-lib/sduptemplates"
 )
 
@@ -14,9 +12,9 @@ type Subscriptions interface {
 
 type subsImpl struct {
 	subscriptions []Subscription
-	subsMutex     sync.Mutex
 	cancelChan    chan Subscription
 	eventChan     chan sduptemplates.DeviceUpdate
+	subscribeChan chan Subscription
 }
 
 //NewSubscriptions creates a Subscriptions container
@@ -25,6 +23,7 @@ func NewSubscriptions(updates chan sduptemplates.DeviceUpdate) Subscriptions {
 		subscriptions: []Subscription{},
 		cancelChan:    make(chan Subscription),
 		eventChan:     updates,
+		subscribeChan: make(chan Subscription),
 	}
 	go subs.eventRoutine()
 	return subs
@@ -41,6 +40,7 @@ func SliceIndex(limit int, predicate func(i int) bool) int {
 }
 
 func (subscriptions *subsImpl) eventRoutine() {
+	//FIXME Separate subscriptions from networking, If a subscriber stops receiving for whatever reason, all other subscribers are affected as well
 	for {
 		select {
 		case subscription := <-subscriptions.cancelChan:
@@ -48,34 +48,26 @@ func (subscriptions *subsImpl) eventRoutine() {
 			if index < 0 {
 				panic("Could not find subscription")
 			}
-			func() {
-				subscriptions.subsMutex.Lock()
-				defer subscriptions.subsMutex.Unlock()
-				subscriptions.subscriptions[index].Close()
-				subscriptions.subscriptions[index] = subscriptions.subscriptions[len(subscriptions.subscriptions)-1]
-				subscriptions.subscriptions = subscriptions.subscriptions[:len(subscriptions.subscriptions)-1]
-			}()
+			subscriptions.subscriptions[index].Close()
+			subscriptions.subscriptions[index] = subscriptions.subscriptions[len(subscriptions.subscriptions)-1]
+			subscriptions.subscriptions = subscriptions.subscriptions[:len(subscriptions.subscriptions)-1]
 
 		case event := <-subscriptions.eventChan:
-			func() {
-				subscriptions.subsMutex.Lock()
-				defer subscriptions.subsMutex.Unlock()
-				for subscriptionIndex := range subscriptions.subscriptions {
-					// FIXME currently blocking
-					subscriptions.subscriptions[subscriptionIndex].Updates() <- event
-				}
-			}()
+			for subscriptionIndex := range subscriptions.subscriptions {
+				// FIXME currently blocking
+				subscriptions.subscriptions[subscriptionIndex].Updates() <- event
+			}
+		case newSubscription := <-subscriptions.subscribeChan:
+			// Register new subscription and feed initial state
+			subscriptions.subscriptions = append(subscriptions.subscriptions, newSubscription)
 		}
 	}
 }
 
 //Subscribe returns a channel that sends updates
 func (subscriptions *subsImpl) Subscribe() Subscription {
-	//todo go routine that reads and forwards events
-	subscriptions.subsMutex.Lock()
-	defer subscriptions.subsMutex.Unlock()
 	newSub := NewSubscription()
-	subscriptions.subscriptions = append(subscriptions.subscriptions, newSub)
+	subscriptions.subscribeChan <- newSub
 	return newSub
 }
 
