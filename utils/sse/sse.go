@@ -13,7 +13,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
+
+	log "github.com/Kaese72/sdup-lib/logging"
 )
 
 //SSE name constants
@@ -74,6 +79,8 @@ func Notify(uri string, evCh chan<- *Event) error {
 		return fmt.Errorf("error performing request for %s: %v", uri, err)
 	}
 
+	log.Info("Connection to SSE endpoint successful", map[string]string{"uri": uri})
+
 	br := bufio.NewReader(res.Body)
 	defer res.Body.Close()
 
@@ -84,18 +91,28 @@ func Notify(uri string, evCh chan<- *Event) error {
 	for {
 		bs, err := br.ReadBytes('\n')
 
-		if err != nil && err != io.EOF {
-			return err
+		if err != nil {
+			if err != io.EOF {
+				return err
+			}
 		}
 
-		if len(bs) < 2 {
-			continue
+		if len(bs) <= 1 {
+			if err != nil && err == io.EOF {
+				break
+			} else {
+				continue
+			}
 		}
 		//FIXME Split only once
 		spl := bytes.Split(bs, delim)
 
-		if len(spl) < 2 {
-			continue
+		if len(spl) <= 1 {
+			if err != nil && err == io.EOF {
+				break
+			} else {
+				continue
+			}
 		}
 
 		currEvent = &Event{URI: uri}
@@ -112,4 +129,31 @@ func Notify(uri string, evCh chan<- *Event) error {
 	}
 
 	return nil
+}
+
+//NotifyReconnect tries to maintain the connection to
+func NotifyReconnect(uri string, evCh chan<- *Event) {
+	//FIXME Implement cancellation (via contexts ?)
+	fallbackCounter := 0
+	maxRetries := 5
+	baseWaitTime := 5.0
+	for {
+		err := Notify(uri, evCh)
+		if err == nil {
+			fallbackCounter = 0
+
+		} else {
+			if fallbackCounter < maxRetries {
+				waitTime := time.Duration(int(math.Pow(baseWaitTime, float64(fallbackCounter)))) * time.Second
+				log.Info("Encountered Unexted close on SSE connector. Executing exponential fallback reconnect", map[string]string{"counter": strconv.Itoa(fallbackCounter), "waittime": strconv.Itoa(int(waitTime.Seconds()))})
+				time.Sleep(waitTime)
+
+			} else {
+				log.Error("Encountered Unexted close on SSE connector. maximum retries exceeded. terminating", map[string]string{"counter": strconv.Itoa(fallbackCounter), "maxretries": strconv.Itoa(maxRetries)})
+				break
+			}
+
+			fallbackCounter += 1
+		}
+	}
 }

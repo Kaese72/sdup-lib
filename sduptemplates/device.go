@@ -6,26 +6,43 @@ type DeviceID string
 //DeviceSpec defines how Device specifications are communicated over SDUP
 type DeviceSpec struct {
 	ID           DeviceID          `json:"id"`
-	Attributes   AttributeSpecMap  `json:"attributes"`
-	Capabilities CapabilitySpecMap `json:"capabilities"`
+	Attributes   AttributeStateMap `json:"attributes,omitempty"`
+	Capabilities CapabilitySpecMap `json:"capabilities,omitempty"`
 }
 
 func (spec DeviceSpec) SpecToInitialUpdate() DeviceUpdate {
-	diff := AttributeStateMap{}
-	for key, val := range spec.Attributes {
-		diff[key] = val.AttributeState
-	}
-
 	return DeviceUpdate{
 		ID:             spec.ID,
-		AttributesDiff: diff,
+		AttributesDiff: spec.Attributes,
+		CapabilityDiff: spec.Capabilities,
 	}
 }
 
-//DeviceDiff defines how changes in a device are communicated over SDUP
-type DeviceUpdate struct {
-	ID             DeviceID          `json:"id"`
-	AttributesDiff AttributeStateMap `json:"attributes"`
-	//Lost indicates that the device is no longer available. This indicates permanence, and does not include temporary disconnects
-	Lost bool `json:"lost"`
+//FIXME This function would be a good place to identify exatly what updates are relevant
+func (spec DeviceSpec) ApplyUpdate(update DeviceUpdate) (DeviceSpec, DeviceUpdate) {
+	relevantUpdate := DeviceUpdate{
+		ID:             update.ID,
+		AttributesDiff: AttributeStateMap{},
+		CapabilityDiff: CapabilitySpecMap{},
+	}
+	for attrKey, updateAttrValue := range update.AttributesDiff {
+		if specAttr, ok := spec.Attributes[attrKey]; ok {
+			if !specAttr.Equal(updateAttrValue) {
+				relevantUpdate.AttributesDiff[attrKey] = updateAttrValue
+			}
+
+		} else {
+			relevantUpdate.AttributesDiff[attrKey] = updateAttrValue
+		}
+		spec.Attributes[attrKey] = updateAttrValue
+	}
+
+	for capKey, capValue := range update.CapabilityDiff {
+		if _, ok := spec.Capabilities[capKey]; !ok {
+			relevantUpdate.CapabilityDiff[capKey] = capValue
+
+		}
+		spec.Capabilities[capKey] = capValue
+	}
+	return spec, relevantUpdate
 }

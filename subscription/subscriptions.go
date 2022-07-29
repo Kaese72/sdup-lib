@@ -13,12 +13,12 @@ type Subscriptions interface {
 type subsImpl struct {
 	subscriptions []Subscription
 	cancelChan    chan Subscription
-	eventChan     chan sduptemplates.DeviceUpdate
+	eventChan     chan sduptemplates.Update
 	subscribeChan chan Subscription
 }
 
 //NewSubscriptions creates a Subscriptions container
-func NewSubscriptions(updates chan sduptemplates.DeviceUpdate) Subscriptions {
+func NewSubscriptions(updates chan sduptemplates.Update) Subscriptions {
 	subs := &subsImpl{
 		subscriptions: []Subscription{},
 		cancelChan:    make(chan Subscription),

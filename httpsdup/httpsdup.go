@@ -6,13 +6,14 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Kaese72/sdup-lib/devicestoretemplates"
 	"github.com/Kaese72/sdup-lib/sduptemplates"
 	"github.com/Kaese72/sdup-lib/subscription"
 	"github.com/gorilla/mux"
 )
 
 //InitHTTPMux initializes a HTTP server mux with the appropriate paths
-func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
+func InitHTTPMux(target sduptemplates.SDUPTarget) (*mux.Router, subscription.Subscriptions) {
 	channel, err := target.Initialize()
 	if err != nil {
 		//FIXME No reason to panic
@@ -20,7 +21,7 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 	}
 	subs := subscription.NewSubscriptions(channel)
 	router := mux.NewRouter()
-	router.HandleFunc("/discovery", func(writer http.ResponseWriter, reader *http.Request) {
+	router.HandleFunc("/devices", func(writer http.ResponseWriter, reader *http.Request) {
 		devices, err := target.Devices()
 		if err != nil {
 			//log.Log(log.Error, err.Error(), nil)
@@ -32,6 +33,22 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 		if err != nil {
 			//log.Log(log.Error, err.Error(), nil)
 			http.Error(writer, "Failed to JSON encode SDUPDevices", http.StatusInternalServerError)
+		}
+		writer.Write(jsonEncoded)
+	})
+
+	router.HandleFunc("/groups", func(writer http.ResponseWriter, reader *http.Request) {
+		groups, err := target.Groups()
+		if err != nil {
+			//log.Log(log.Error, err.Error(), nil)
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		jsonEncoded, err := json.MarshalIndent(groups, "", "   ")
+		if err != nil {
+			//log.Log(log.Error, err.Error(), nil)
+			http.Error(writer, "Failed to JSON encode SDUP groups", http.StatusInternalServerError)
 		}
 		writer.Write(jsonEncoded)
 	})
@@ -55,7 +72,7 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 			return
 		}
 		for _, device := range devices {
-			sendEvent(writer, flusher, device.SpecToInitialUpdate())
+			sendEvent(writer, flusher, sduptemplates.UpdateFromDeviceUpdate(device.SpecToInitialUpdate()))
 		}
 
 		doneChan := reader.Context().Done()
@@ -77,7 +94,7 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 		}
 	})
 
-	router.HandleFunc("/capability/{deviceID}/{capabilityKey}", func(writer http.ResponseWriter, reader *http.Request) {
+	router.HandleFunc("/devices/{deviceID}/capabilities/{capabilityKey}", func(writer http.ResponseWriter, reader *http.Request) {
 		vars := mux.Vars(reader)
 		deviceID := vars["deviceID"]
 		capabilityKey := vars["capabilityKey"]
@@ -103,10 +120,43 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) *mux.Router {
 		http.Error(writer, "OK", http.StatusOK)
 
 	}).Methods("POST")
-	return router
+
+	router.HandleFunc("/groups/{groupId}/capabilities/{capabilityKey}", func(writer http.ResponseWriter, reader *http.Request) {
+		vars := mux.Vars(reader)
+		groupId := vars["groupId"]
+		capabilityKey := vars["capabilityKey"]
+		//log.Log(log.Info, "Triggering capability", map[string]string{"device": deviceID, "capability": capabilityKey})
+		var args sduptemplates.CapabilityArgument
+		if err := json.NewDecoder(reader.Body).Decode(&args); err != nil {
+			if err == io.EOF {
+				// EOF was reached. Let validators later handle that
+				args = sduptemplates.CapabilityArgument{}
+			} else {
+				http.Error(writer, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+		err = target.GTriggerCapability(sduptemplates.DeviceGroupID(groupId), sduptemplates.CapabilityKey(capabilityKey), args)
+		if err != nil {
+			http.Error(writer, err.Error(), HTTPStatusCode(err))
+			return
+		}
+		http.Error(writer, "OK", http.StatusOK)
+
+	}).Methods("POST")
+
+	router.HandleFunc("/healthcheck", func(writer http.ResponseWriter, reader *http.Request) {
+		jsonEncoded, err := json.MarshalIndent(devicestoretemplates.HealthCheck{Ok: true}, "", "   ")
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writer.Write(jsonEncoded)
+	})
+	return router, subs
 }
 
-func sendEvent(writer http.ResponseWriter, flusher http.Flusher, event sduptemplates.DeviceUpdate) {
+func sendEvent(writer http.ResponseWriter, flusher http.Flusher, event sduptemplates.Update) {
 	jsonString, err := json.Marshal(event)
 	if err != nil {
 		//log.Log(log.Error, "Failed to Marshal device update", nil)
