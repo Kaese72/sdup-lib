@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Kaese72/sdup-lib/devicestoretemplates"
 	log "github.com/Kaese72/sdup-lib/logging"
 	"github.com/Kaese72/sdup-lib/sdupclient/config"
 	"github.com/Kaese72/sdup-lib/sduptemplates"
@@ -14,12 +15,12 @@ import (
 
 //FIXME Contexts ?
 
-//SDUPHTTPClient connects to another SDUP node
+// SDUPHTTPClient connects to another SDUP node
 type SDUPHTTPClient struct {
 	sdupURI string
 }
 
-//NewSDUPHTTPClient instansiates a SDUPHTTPClient
+// NewSDUPHTTPClient instansiates a SDUPHTTPClient
 func NewSDUPHTTPClient(config config.HTTPConfig) (sduptemplates.SDUPTarget, error) {
 	baseURI, err := config.URL()
 	if err != nil {
@@ -30,7 +31,7 @@ func NewSDUPHTTPClient(config config.HTTPConfig) (sduptemplates.SDUPTarget, erro
 	}, nil
 }
 
-//DeviceUpdates starts fetching device updates from the SDUP server
+// DeviceUpdates starts fetching device updates from the SDUP server
 func (client SDUPHTTPClient) Initialize() (chan sduptemplates.Update, error) {
 	//Start SSE connection to other SDUP service
 	eventChan := make(chan *sse.Event, 10)
@@ -54,7 +55,7 @@ func (client SDUPHTTPClient) Initialize() (chan sduptemplates.Update, error) {
 	return dUpdateChan, nil
 }
 
-//Devices runs a discovery against the SDUP server
+// Devices runs a discovery against the SDUP server
 func (client SDUPHTTPClient) Devices() ([]sduptemplates.DeviceSpec, error) {
 	//GET against /discovery endpoint on SDUP service
 	resp, err := http.Get(fmt.Sprintf("%s/devices", client.sdupURI))
@@ -69,7 +70,7 @@ func (client SDUPHTTPClient) Devices() ([]sduptemplates.DeviceSpec, error) {
 	return templates, nil
 }
 
-//Devices runs a discovery against the SDUP server
+// Devices runs a discovery against the SDUP server
 func (client SDUPHTTPClient) Groups() ([]sduptemplates.DeviceGroupSpec, error) {
 	//GET against /discovery endpoint on SDUP service
 	resp, err := http.Get(fmt.Sprintf("%s/groups", client.sdupURI))
@@ -84,8 +85,8 @@ func (client SDUPHTTPClient) Groups() ([]sduptemplates.DeviceGroupSpec, error) {
 	return templates, nil
 }
 
-//TriggerCapability triggers a device capability on the SDUP server
-func (client SDUPHTTPClient) TriggerCapability(id sduptemplates.DeviceID, cap sduptemplates.CapabilityKey, arg sduptemplates.CapabilityArgument) error {
+// TriggerCapability triggers a device capability on the SDUP server
+func (client SDUPHTTPClient) TriggerCapability(id string, cap devicestoretemplates.CapabilityKey, arg devicestoretemplates.CapabilityArgs) error {
 	jsonVal, err := json.Marshal(arg)
 	if err != nil {
 		return err
@@ -98,7 +99,7 @@ func (client SDUPHTTPClient) TriggerCapability(id sduptemplates.DeviceID, cap sd
 	return nil
 }
 
-func (client SDUPHTTPClient) GTriggerCapability(id sduptemplates.DeviceGroupID, cap sduptemplates.CapabilityKey, arg sduptemplates.CapabilityArgument) error {
+func (client SDUPHTTPClient) GTriggerCapability(id sduptemplates.DeviceGroupID, cap devicestoretemplates.CapabilityKey, arg devicestoretemplates.CapabilityArgs) error {
 	//FIXME Post to the "/capability/{deviceID}/{capabilityKey}" endpoint
 	jsonVal, err := json.Marshal(arg)
 	if err != nil {

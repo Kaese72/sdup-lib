@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-//InitHTTPMux initializes a HTTP server mux with the appropriate paths
+// InitHTTPMux initializes a HTTP server mux with the appropriate paths
 func InitHTTPMux(target sduptemplates.SDUPTarget) (*mux.Router, subscription.Subscriptions) {
 	channel, err := target.Initialize()
 	if err != nil {
@@ -99,19 +99,19 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) (*mux.Router, subscription.Sub
 		deviceID := vars["deviceID"]
 		capabilityKey := vars["capabilityKey"]
 		//log.Log(log.Info, "Triggering capability", map[string]string{"device": deviceID, "capability": capabilityKey})
-		var args sduptemplates.CapabilityArgument
+		var args devicestoretemplates.CapabilityArgs
 
 		err := json.NewDecoder(reader.Body).Decode(&args)
 		if err != nil {
 			if err == io.EOF {
 				//No body was sent. That is fine
-				args = sduptemplates.CapabilityArgument{}
+				args = devicestoretemplates.CapabilityArgs{}
 			} else {
 				http.Error(writer, err.Error(), http.StatusBadRequest)
 				return
 			}
 		}
-		err = target.TriggerCapability(sduptemplates.DeviceID(deviceID), sduptemplates.CapabilityKey(capabilityKey), args)
+		err = target.TriggerCapability(deviceID, devicestoretemplates.CapabilityKey(capabilityKey), args)
 		if err != nil {
 			http.Error(writer, err.Error(), HTTPStatusCode(err))
 			return
@@ -126,17 +126,17 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) (*mux.Router, subscription.Sub
 		groupId := vars["groupId"]
 		capabilityKey := vars["capabilityKey"]
 		//log.Log(log.Info, "Triggering capability", map[string]string{"device": deviceID, "capability": capabilityKey})
-		var args sduptemplates.CapabilityArgument
+		var args devicestoretemplates.CapabilityArgs
 		if err := json.NewDecoder(reader.Body).Decode(&args); err != nil {
 			if err == io.EOF {
 				// EOF was reached. Let validators later handle that
-				args = sduptemplates.CapabilityArgument{}
+				args = devicestoretemplates.CapabilityArgs{}
 			} else {
 				http.Error(writer, err.Error(), http.StatusBadRequest)
 				return
 			}
 		}
-		err = target.GTriggerCapability(sduptemplates.DeviceGroupID(groupId), sduptemplates.CapabilityKey(capabilityKey), args)
+		err = target.GTriggerCapability(sduptemplates.DeviceGroupID(groupId), devicestoretemplates.CapabilityKey(capabilityKey), args)
 		if err != nil {
 			http.Error(writer, err.Error(), HTTPStatusCode(err))
 			return

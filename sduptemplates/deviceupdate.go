@@ -1,16 +1,26 @@
 package sduptemplates
 
+import "github.com/Kaese72/sdup-lib/devicestoretemplates"
+
 //DeviceUpdate defines how changes in a device are communicated over SDUP
 type DeviceUpdate struct {
 	// Device specific fields
-	ID             DeviceID          `json:"deviceid"`
-	AttributesDiff AttributeStateMap `json:"attributes,omitempty"`
-	CapabilityDiff CapabilitySpecMap `json:"capabilities,omitempty"`
+	ID             string                                                                    `json:"identifier"`
+	AttributesDiff map[devicestoretemplates.AttributeKey]devicestoretemplates.AttributeState `json:"attributes,omitempty"`
+	CapabilityDiff map[devicestoretemplates.CapabilityKey]devicestoretemplates.Capability    `json:"capabilities,omitempty"`
 }
 
 func (update DeviceUpdate) UpdateToDevice() DeviceSpec {
 	return DeviceSpec{
 		ID:           update.ID,
+		Attributes:   update.AttributesDiff,
+		Capabilities: update.CapabilityDiff,
+	}
+}
+
+func (update DeviceUpdate) DeviceStorePatch() devicestoretemplates.Device {
+	return devicestoretemplates.Device{
+		Identifier:   string(update.ID),
 		Attributes:   update.AttributesDiff,
 		Capabilities: update.CapabilityDiff,
 	}

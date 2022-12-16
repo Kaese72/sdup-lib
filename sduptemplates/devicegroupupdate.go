@@ -4,7 +4,7 @@ type DeviceGroupUpdate struct {
 	// Device Group specific fields
 	GroupID   DeviceGroupID `json:"groupid"`
 	Name      string        `json:"groupname"`
-	DeviceIDs []DeviceID    `json:"deviceids"`
+	DeviceIDs []string      `json:"deviceids"`
 }
 
 func (update DeviceGroupUpdate) UpdateToDeviceGroup() DeviceGroupSpec {

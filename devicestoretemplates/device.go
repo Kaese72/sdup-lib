@@ -1,9 +1,12 @@
 package devicestoretemplates
 
-import "github.com/Kaese72/sdup-lib/sduptemplates"
+//AttributeKey is the string identifier of an attribute
+type AttributeKey string
+
+type CapabilityKey string
 
 type Device struct {
-	Identifier   string                                        `json:"identifier"`
-	Attributes   map[sduptemplates.AttributeKey]AttributeState `json:"attributes"`
-	Capabilities map[sduptemplates.CapabilityKey]Capability    `json:"capabilities"`
+	Identifier   string                          `json:"identifier"`
+	Attributes   map[AttributeKey]AttributeState `json:"attributes"`
+	Capabilities map[CapabilityKey]Capability    `json:"capabilities"`
 }

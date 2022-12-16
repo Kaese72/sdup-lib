@@ -3,13 +3,14 @@ package sdupcache
 import (
 	"errors"
 
+	"github.com/Kaese72/sdup-lib/devicestoretemplates"
 	"github.com/Kaese72/sdup-lib/logging"
 	"github.com/Kaese72/sdup-lib/sdupcache/filters"
 	"github.com/Kaese72/sdup-lib/sduptemplates"
 )
 
 type SDUPCacheVolImpl struct {
-	devices    map[sduptemplates.DeviceID]sduptemplates.DeviceSpec
+	devices    map[string]sduptemplates.DeviceSpec
 	groups     map[sduptemplates.DeviceGroupID]sduptemplates.DeviceGroupSpec
 	target     sduptemplates.SDUPTarget
 	updateChan chan sduptemplates.Update
@@ -17,7 +18,7 @@ type SDUPCacheVolImpl struct {
 
 func NewSDUPCache(target sduptemplates.SDUPTarget) SDUPCache {
 	return &SDUPCacheVolImpl{
-		devices:    map[sduptemplates.DeviceID]sduptemplates.DeviceSpec{},
+		devices:    map[string]sduptemplates.DeviceSpec{},
 		groups:     map[sduptemplates.DeviceGroupID]sduptemplates.DeviceGroupSpec{},
 		target:     target,
 		updateChan: make(chan sduptemplates.Update, 10),
@@ -76,18 +77,18 @@ func (cache SDUPCacheVolImpl) Groups() ([]sduptemplates.DeviceGroupSpec, error) 
 	return specs, nil
 }
 
-func (cache SDUPCacheVolImpl) Device(deviceID sduptemplates.DeviceID) (sduptemplates.DeviceSpec, error) {
+func (cache SDUPCacheVolImpl) Device(deviceID string) (sduptemplates.DeviceSpec, error) {
 	if item, ok := cache.devices[deviceID]; ok {
 		return item, nil
 	}
 	return sduptemplates.DeviceSpec{}, sduptemplates.NoSuchDevice
 }
 
-func (cache SDUPCacheVolImpl) TriggerCapability(deviceID sduptemplates.DeviceID, capKey sduptemplates.CapabilityKey, capArg sduptemplates.CapabilityArgument) error {
+func (cache SDUPCacheVolImpl) TriggerCapability(deviceID string, capKey devicestoretemplates.CapabilityKey, capArg devicestoretemplates.CapabilityArgs) error {
 	return cache.target.TriggerCapability(deviceID, capKey, capArg)
 }
 
-func (cache SDUPCacheVolImpl) GTriggerCapability(dgid sduptemplates.DeviceGroupID, ck sduptemplates.CapabilityKey, ca sduptemplates.CapabilityArgument) error {
+func (cache SDUPCacheVolImpl) GTriggerCapability(dgid sduptemplates.DeviceGroupID, ck devicestoretemplates.CapabilityKey, ca devicestoretemplates.CapabilityArgs) error {
 	return cache.target.GTriggerCapability(dgid, ck, ca)
 }
 
@@ -136,7 +137,7 @@ func deviceMatchesFilters(device sduptemplates.DeviceSpec, filters filters.Attri
 			return false, errors.New("keyval currently not supported")
 
 		} else {
-			if _, ok := device.Attributes[sduptemplates.AttributeKey(filter.Key)]; !ok {
+			if _, ok := device.Attributes[devicestoretemplates.AttributeKey(filter.Key)]; !ok {
 				// Not having the attribute counts as false
 				return false, nil
 			}
@@ -144,16 +145,16 @@ func deviceMatchesFilters(device sduptemplates.DeviceSpec, filters filters.Attri
 			// Get value based on what type the comparator is
 			switch comp := filter.Value.(type) {
 			case int:
-				return matchNumericComparison(device.Attributes[sduptemplates.AttributeKey(filter.Key)].Numeric, float32(comp), operator)
+				return matchNumericComparison(device.Attributes[devicestoretemplates.AttributeKey(filter.Key)].Numeric, float32(comp), operator)
 
 			case float32:
-				return matchNumericComparison(device.Attributes[sduptemplates.AttributeKey(filter.Key)].Numeric, comp, operator)
+				return matchNumericComparison(device.Attributes[devicestoretemplates.AttributeKey(filter.Key)].Numeric, comp, operator)
 
 			case string:
-				return matchStringComparison(device.Attributes[sduptemplates.AttributeKey(filter.Key)].Text, comp, operator)
+				return matchStringComparison(device.Attributes[devicestoretemplates.AttributeKey(filter.Key)].Text, comp, operator)
 
 			case bool:
-				return matchBooleanComparison(device.Attributes[sduptemplates.AttributeKey(filter.Key)].Boolean, comp, operator)
+				return matchBooleanComparison(device.Attributes[devicestoretemplates.AttributeKey(filter.Key)].Boolean, comp, operator)
 
 			default:
 				// FIXME log better

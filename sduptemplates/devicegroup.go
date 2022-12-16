@@ -9,7 +9,7 @@ type DeviceGroupID string
 type DeviceGroupSpec struct {
 	ID        DeviceGroupID `json:"id"`
 	Name      string        `json:"name"`
-	DeviceIDs []DeviceID    `json:"deviceids"`
+	DeviceIDs []string      `json:"deviceids"`
 }
 
 func (spec DeviceGroupSpec) SpecToInitialUpdate() DeviceGroupUpdate {

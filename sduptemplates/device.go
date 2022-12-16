@@ -1,13 +1,12 @@
 package sduptemplates
 
-//DeviceID represents a locally unique ID for a device
-type DeviceID string
+import "github.com/Kaese72/sdup-lib/devicestoretemplates"
 
-//DeviceSpec defines how Device specifications are communicated over SDUP
+// DeviceSpec defines how Device specifications are communicated over SDUP
 type DeviceSpec struct {
-	ID           DeviceID          `json:"id"`
-	Attributes   AttributeStateMap `json:"attributes,omitempty"`
-	Capabilities CapabilitySpecMap `json:"capabilities,omitempty"`
+	ID           string                                                                    `json:"identifier"`
+	Attributes   map[devicestoretemplates.AttributeKey]devicestoretemplates.AttributeState `json:"attributes,omitempty"`
+	Capabilities map[devicestoretemplates.CapabilityKey]devicestoretemplates.Capability    `json:"capabilities,omitempty"`
 }
 
 func (spec DeviceSpec) SpecToInitialUpdate() DeviceUpdate {
@@ -18,12 +17,12 @@ func (spec DeviceSpec) SpecToInitialUpdate() DeviceUpdate {
 	}
 }
 
-//FIXME This function would be a good place to identify exatly what updates are relevant
+// FIXME This function would be a good place to identify exatly what updates are relevant
 func (spec DeviceSpec) ApplyUpdate(update DeviceUpdate) (DeviceSpec, DeviceUpdate) {
 	relevantUpdate := DeviceUpdate{
 		ID:             update.ID,
-		AttributesDiff: AttributeStateMap{},
-		CapabilityDiff: CapabilitySpecMap{},
+		AttributesDiff: map[devicestoretemplates.AttributeKey]devicestoretemplates.AttributeState{},
+		CapabilityDiff: map[devicestoretemplates.CapabilityKey]devicestoretemplates.Capability{},
 	}
 	for attrKey, updateAttrValue := range update.AttributesDiff {
 		if specAttr, ok := spec.Attributes[attrKey]; ok {

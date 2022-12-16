@@ -7,16 +7,16 @@ import (
 
 type SDUPFilterable interface {
 	//Device
-	Device(sduptemplates.DeviceID) (sduptemplates.DeviceSpec, error)
+	Device(string) (sduptemplates.DeviceSpec, error)
 	//FIXME searchable
 	FilteredDevices(filters.AttributeFilters) ([]sduptemplates.DeviceSpec, error)
 	//Attributes
 	//DeviceAttributes(sduptemplates.DeviceID) (sduptemplates.AttributeSpecMap, error)
-	//DeviceAttribute(sduptemplates.DeviceID, sduptemplates.AttributeKey) (sduptemplates.AttributeSpec, error)
+	//DeviceAttribute(sduptemplates.DeviceID, devicestoretemplates.AttributeKey) (sduptemplates.AttributeSpec, error)
 
 	//Capabilities
 	//DeviceCapabilities(sduptemplates.DeviceID) (sduptemplates.CapabilitySpecMap, error)
-	//DeviceCapability(sduptemplates.DeviceID, sduptemplates.CapabilityKey) (sduptemplates.CapabilitySpec, error)
+	//DeviceCapability(sduptemplates.DeviceID, devicestoretemplates.CapabilityKey) (sduptemplates.CapabilitySpec, error)
 }
 
 type SDUPCache interface {

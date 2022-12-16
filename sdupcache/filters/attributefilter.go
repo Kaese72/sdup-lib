@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Kaese72/sdup-lib/sduptemplates"
+	"github.com/Kaese72/sdup-lib/devicestoretemplates"
 )
 
 type Operator string
@@ -18,7 +18,7 @@ const (
 	GreaterEqual Operator = "gte"
 )
 
-type AttributeFilterKey sduptemplates.AttributeKey
+type AttributeFilterKey devicestoretemplates.AttributeKey
 
 const ErrNotCompositeIdentifier = "could not split identifier"
 
