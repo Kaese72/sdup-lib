@@ -18,6 +18,20 @@ type HTTPLog struct {
 	Data     map[string]string `json:"data"`
 }
 
+type HTTPConfig struct {
+	URL string `json:"url"`
+}
+
+func (config HTTPConfig) HTTPLogger() (HTTPLogger, error) {
+	url, err := url.Parse(config.URL)
+	if err != nil {
+		return HTTPLogger{}, err
+	}
+	return HTTPLogger{
+		Url: *url,
+	}, nil
+}
+
 func (logger HTTPLogger) postLog(log HTTPLog) {
 	encoded, err := json.Marshal(log)
 	if err != nil {

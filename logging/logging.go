@@ -10,10 +10,31 @@ type Logger interface {
 	Log(string, int, ...map[string]string)
 }
 
+type Config struct {
+	StdOut bool        `json:"stdout"`
+	HTTP   *HTTPConfig `json:"http"`
+}
+
 var logger Logger = StandardOutLogger{}
 
 func SetLogger(newLogger Logger) {
 	logger = newLogger
+}
+
+func InitLoggers(conf Config) error {
+	loggers := []Logger{}
+	if conf.StdOut {
+		loggers = append(loggers, StandardOutLogger{})
+	}
+	if conf.HTTP != nil {
+		httpLogger, err := conf.HTTP.HTTPLogger()
+		if err != nil {
+			return err
+		}
+		loggers = append(loggers, httpLogger)
+	}
+	SetLogger(MultiLogger{Loggers: loggers})
+	return nil
 }
 
 // backupLogger is used in emergency situations where primary logger fails
@@ -42,7 +63,7 @@ func SetDebugLogging(flag bool) {
 	debugLogging = flag
 }
 
-func stringifyData(datas []map[string]string) (dataString string) {
+func stringifyData(datas ...map[string]string) (dataString string) {
 	for _, data := range datas {
 		for key, val := range data {
 			dataString += fmt.Sprintf("%s=%s ", key, val)
