@@ -21,7 +21,7 @@ import (
 	log "github.com/Kaese72/sdup-lib/logging"
 )
 
-//SSE name constants
+// SSE name constants
 const (
 	eName = "event"
 	dName = "data"
@@ -32,7 +32,7 @@ var (
 	ErrNilChan = fmt.Errorf("nil channel given")
 )
 
-//Client is the default client used for requests.
+// Client is the default client used for requests.
 var Client = &http.Client{}
 
 func liveReq(verb, uri string, body io.Reader) (*http.Request, error) {
@@ -46,24 +46,24 @@ func liveReq(verb, uri string, body io.Reader) (*http.Request, error) {
 	return req, nil
 }
 
-//Event is a go representation of an http server-sent event
+// Event is a go representation of an http server-sent event
 type Event struct {
 	URI  string
 	Type string
 	Data io.Reader
 }
 
-//GetReq is a function to return a single request. It will be used by notify to
-//get a request and can be replaces if additional configuration is desired on
-//the request. The "Accept" header will necessarily be overwritten.
+// GetReq is a function to return a single request. It will be used by notify to
+// get a request and can be replaces if additional configuration is desired on
+// the request. The "Accept" header will necessarily be overwritten.
 var GetReq = func(verb, uri string, body io.Reader) (*http.Request, error) {
 	return http.NewRequest(verb, uri, body)
 }
 
-//Notify takes the uri of an SSE stream and channel, and will send an Event
-//down the channel when recieved, until the stream is closed. It will then
-//close the stream. This is blocking, and so you will likely want to call this
-//in a new goroutine (via `go Notify(..)`)
+// Notify takes the uri of an SSE stream and channel, and will send an Event
+// down the channel when recieved, until the stream is closed. It will then
+// close the stream. This is blocking, and so you will likely want to call this
+// in a new goroutine (via `go Notify(..)`)
 func Notify(uri string, evCh chan<- *Event) error {
 	if evCh == nil {
 		return ErrNilChan
@@ -79,7 +79,7 @@ func Notify(uri string, evCh chan<- *Event) error {
 		return fmt.Errorf("error performing request for %s: %v", uri, err)
 	}
 
-	log.Info("Connection to SSE endpoint successful", map[string]string{"uri": uri})
+	log.Info("Connection to SSE endpoint successful", map[string]interface{}{"uri": uri})
 
 	br := bufio.NewReader(res.Body)
 	defer res.Body.Close()
@@ -131,7 +131,7 @@ func Notify(uri string, evCh chan<- *Event) error {
 	return nil
 }
 
-//NotifyReconnect tries to maintain the connection to
+// NotifyReconnect tries to maintain the connection to
 func NotifyReconnect(uri string, evCh chan<- *Event) {
 	//FIXME Implement cancellation (via contexts ?)
 	fallbackCounter := 0
@@ -145,11 +145,11 @@ func NotifyReconnect(uri string, evCh chan<- *Event) {
 		} else {
 			if fallbackCounter < maxRetries {
 				waitTime := time.Duration(int(math.Pow(baseWaitTime, float64(fallbackCounter)))) * time.Second
-				log.Info("Encountered Unexted close on SSE connector. Executing exponential fallback reconnect", map[string]string{"counter": strconv.Itoa(fallbackCounter), "waittime": strconv.Itoa(int(waitTime.Seconds()))})
+				log.Info("Encountered Unexted close on SSE connector. Executing exponential fallback reconnect", map[string]interface{}{"counter": fallbackCounter, "waittime": int(waitTime.Seconds())})
 				time.Sleep(waitTime)
 
 			} else {
-				log.Error("Encountered Unexted close on SSE connector. maximum retries exceeded. terminating", map[string]string{"counter": strconv.Itoa(fallbackCounter), "maxretries": strconv.Itoa(maxRetries)})
+				log.Error("Encountered Unexted close on SSE connector. maximum retries exceeded. terminating", map[string]interface{}{"counter": strconv.Itoa(fallbackCounter), "maxretries": strconv.Itoa(maxRetries)})
 				break
 			}
 

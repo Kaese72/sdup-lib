@@ -1,61 +1,36 @@
 package logging
 
 import (
-	"fmt"
 	"runtime"
-	"strconv"
 )
 
 type Logger interface {
-	Log(string, int, ...map[string]string)
+	Log(string, int, ...map[string]interface{})
 }
 
-type Config struct {
-	StdOut bool        `json:"stdout"`
-	HTTP   *HTTPConfig `json:"http"`
-}
-
-var logger Logger = StandardOutLogger{}
+var logger Logger = JSONLogger{}
 
 func SetLogger(newLogger Logger) {
 	logger = newLogger
 }
 
-func InitLoggers(conf Config) error {
-	loggers := []Logger{}
-	if conf.StdOut {
-		loggers = append(loggers, StandardOutLogger{})
-	}
-	if conf.HTTP != nil {
-		httpLogger, err := conf.HTTP.HTTPLogger()
-		if err != nil {
-			return err
-		}
-		loggers = append(loggers, httpLogger)
-	}
-	SetLogger(MultiLogger{Loggers: loggers})
-	return nil
-}
-
-// backupLogger is used in emergency situations where primary logger fails
-var backupLogger Logger = StandardOutLogger{}
 var debugLogging bool = false
 
-func Debug(msg string, data ...map[string]string) {
+func Debug(msg string, data ...map[string]interface{}) {
 	if debugLogging {
 		logger.Log(msg, 7, data...)
 	}
 }
 
-func Info(msg string, data ...map[string]string) {
+func Info(msg string, data ...map[string]interface{}) {
 	logger.Log(msg, 6, data...)
 }
 
-func Error(msg string, data ...map[string]string) {
+func Error(msg string, data ...map[string]interface{}) {
 	logger.Log(msg, 3, data...)
 }
 
-func Fatal(msg string, data ...map[string]string) {
+func Fatal(msg string, data ...map[string]interface{}) {
 	logger.Log(msg, 1, data...)
 }
 
@@ -63,17 +38,8 @@ func SetDebugLogging(flag bool) {
 	debugLogging = flag
 }
 
-func stringifyData(datas ...map[string]string) (dataString string) {
-	for _, data := range datas {
-		for key, val := range data {
-			dataString += fmt.Sprintf("%s=%s ", key, val)
-		}
-	}
-	return
-}
-
-func mergeMaps(datas []map[string]string) map[string]string {
-	merged := make(map[string]string)
+func mergeMaps(datas ...map[string]interface{}) map[string]interface{} {
+	merged := make(map[string]interface{})
 	for _, data := range datas {
 		for key, value := range data {
 			merged[key] = value
@@ -82,10 +48,10 @@ func mergeMaps(datas []map[string]string) map[string]string {
 	return merged
 }
 
-func collectData() map[string]string {
+func collectData() map[string]interface{} {
 	_, file, no, _ := runtime.Caller(3)
-	return map[string]string{
+	return map[string]interface{}{
 		"FILE": file,
-		"LINE": strconv.Itoa(no),
+		"LINE": no,
 	}
 }

@@ -36,7 +36,7 @@ func (cache *SDUPCacheVolImpl) Initialize() (chan sduptemplates.Update, error) {
 			if dUpdate, err := update.GetDeviceUpdate(); err == nil {
 				relevantUpdate := cache.updateDevice(dUpdate)
 				if relevantUpdate.Relevant() {
-					logging.Info("Device update considered relevant", map[string]string{"DeviceID": string(relevantUpdate.ID)})
+					logging.Info("Device update considered relevant", map[string]interface{}{"DeviceID": relevantUpdate.ID})
 					// Update is relevant, and should be passed on
 					cache.updateChan <- sduptemplates.UpdateFromDeviceUpdate(relevantUpdate)
 
@@ -45,7 +45,7 @@ func (cache *SDUPCacheVolImpl) Initialize() (chan sduptemplates.Update, error) {
 			} else if gUpdate, err := update.GetDeviceGroupUpdate(); err == nil {
 				if cache.updateGroup(gUpdate) {
 					// Update is relevant, and should be passed on
-					logging.Info("Group update", map[string]string{"DeviceID": string(gUpdate.GroupID)})
+					logging.Info("Group update", map[string]interface{}{"DeviceID": string(gUpdate.GroupID)})
 					cache.updateChan <- update
 
 				}
