@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Kaese72/sdup-lib/devicestoretemplates"
+	devicestoretemplates "github.com/Kaese72/device-store/rest/models"
 	"github.com/Kaese72/sdup-lib/sduptemplates"
 	"github.com/Kaese72/sdup-lib/subscription"
 	"github.com/gorilla/mux"
@@ -145,14 +145,6 @@ func InitHTTPMux(target sduptemplates.SDUPTarget) (*mux.Router, subscription.Sub
 
 	}).Methods("POST")
 
-	router.HandleFunc("/healthcheck", func(writer http.ResponseWriter, reader *http.Request) {
-		jsonEncoded, err := json.MarshalIndent(devicestoretemplates.HealthCheck{Ok: true}, "", "   ")
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writer.Write(jsonEncoded)
-	})
 	return router, subs
 }
 

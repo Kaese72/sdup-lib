@@ -1,6 +1,6 @@
 package sduptemplates
 
-import "github.com/Kaese72/sdup-lib/devicestoretemplates"
+import devicestoretemplates "github.com/Kaese72/device-store/rest/models"
 
 // DeviceSpec defines how Device specifications are communicated over SDUP
 type DeviceSpec struct {

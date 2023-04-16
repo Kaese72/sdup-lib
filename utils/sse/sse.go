@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/Kaese72/sdup-lib/logging"
+	log "github.com/Kaese72/huemie-lib/logging"
 )
 
 // SSE name constants

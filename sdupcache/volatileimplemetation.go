@@ -3,8 +3,8 @@ package sdupcache
 import (
 	"errors"
 
-	"github.com/Kaese72/sdup-lib/devicestoretemplates"
-	"github.com/Kaese72/sdup-lib/logging"
+	devicestoretemplates "github.com/Kaese72/device-store/rest/models"
+	"github.com/Kaese72/huemie-lib/logging"
 	"github.com/Kaese72/sdup-lib/sdupcache/filters"
 	"github.com/Kaese72/sdup-lib/sduptemplates"
 )

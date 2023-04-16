@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Kaese72/sdup-lib/logging"
+	"github.com/Kaese72/huemie-lib/logging"
 )
 
 type HuemieStandardConfig interface {

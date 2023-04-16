@@ -1,6 +1,6 @@
 package sduptemplates
 
-import "github.com/Kaese72/sdup-lib/devicestoretemplates"
+import devicestoretemplates "github.com/Kaese72/device-store/rest/models"
 
 //DeviceUpdate defines how changes in a device are communicated over SDUP
 type DeviceUpdate struct {

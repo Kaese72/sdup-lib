@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Kaese72/sdup-lib/devicestoretemplates"
-	log "github.com/Kaese72/sdup-lib/logging"
+	devicestoretemplates "github.com/Kaese72/device-store/rest/models"
+	log "github.com/Kaese72/huemie-lib/logging"
 	"github.com/Kaese72/sdup-lib/sdupclient/config"
 	"github.com/Kaese72/sdup-lib/sduptemplates"
 	"github.com/Kaese72/sdup-lib/utils/sse"
