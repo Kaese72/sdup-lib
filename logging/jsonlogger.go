@@ -22,6 +22,7 @@ func (log JSONLogger) Log(msg string, priority int, datas ...map[string]interfac
 	totalDatas := mergeMaps(providedDatas, collectData(), map[string]interface{}{
 		"label":    label,
 		"priority": priority,
+		"message":  msg,
 	})
 	encoded, err := json.Marshal(totalDatas)
 	if err != nil {
