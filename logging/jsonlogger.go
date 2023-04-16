@@ -28,5 +28,5 @@ func (log JSONLogger) Log(msg string, priority int, datas ...map[string]interfac
 		Error("Could not Marshal log", map[string]interface{}{"originalmessage": msg, "marshalerror": err.Error()})
 		return
 	}
-	fmt.Print(encoded)
+	fmt.Printf("%s\n", string(encoded))
 }
