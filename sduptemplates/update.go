@@ -50,7 +50,6 @@ func (update Update) GetDeviceUpdate() (DeviceUpdate, error) {
 
 func (update Update) GetDeviceGroupUpdate() (DeviceGroupUpdate, error) {
 	var err error
-	// FIXME 0 could be a valid group id
 	if update.deviceGroupUpdate.GroupID == "" {
 		err = errors.New("Update is not a device group update")
 	}
