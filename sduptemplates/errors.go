@@ -9,6 +9,8 @@ const (
 	NoSuchAttribute
 	//NoSuchCapability indicates the found device does not have the requested capability
 	NoSuchCapability
+	//NoSuchGroup indicates the group was not found
+	NoSuchGroup
 )
 
 func (err SDUPError) Error() string {
@@ -19,6 +21,8 @@ func (err SDUPError) Error() string {
 		return "The attribute on the selected device was not found"
 	case NoSuchCapability:
 		return "The capability on the selected device was not found"
+	case NoSuchGroup:
+		return "The group was not found"
 	default:
 		return "An unknown error occured"
 	}

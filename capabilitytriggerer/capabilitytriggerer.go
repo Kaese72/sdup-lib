@@ -11,8 +11,8 @@ import (
 )
 
 type CapabilityTriggerer interface {
-	TriggerCapability(string, string, devicestoretemplates.CapabilityArgs) error
-	//GTriggerCapability(DeviceGroupID, string, devicestoretemplates.CapabilityArgs) error
+	TriggerCapability(string, string, devicestoretemplates.DeviceCapabilityArgs) error
+	GTriggerCapability(string, string, devicestoretemplates.GroupCapabilityArgs) error
 }
 
 // HTTPStatusCode crudely translates error into http status code
@@ -33,13 +33,12 @@ func InitCapabilityTriggerMux(target CapabilityTriggerer) *mux.Router {
 		deviceID := vars["deviceID"]
 		capabilityKey := vars["capabilityKey"]
 		//log.Log(log.Info, "Triggering capability", map[string]string{"device": deviceID, "capability": capabilityKey})
-		var args devicestoretemplates.CapabilityArgs
-
+		var args devicestoretemplates.DeviceCapabilityArgs
 		err := json.NewDecoder(reader.Body).Decode(&args)
 		if err != nil {
 			if err == io.EOF {
 				//No body was sent. That is fine
-				args = devicestoretemplates.CapabilityArgs{}
+				args = devicestoretemplates.DeviceCapabilityArgs{}
 			} else {
 				http.Error(writer, err.Error(), http.StatusBadRequest)
 				return
@@ -52,7 +51,32 @@ func InitCapabilityTriggerMux(target CapabilityTriggerer) *mux.Router {
 
 		}
 		http.Error(writer, "OK", http.StatusOK)
-
 	}).Methods("POST")
+
+	router.HandleFunc("/groups/{groupID}/capabilities/{capabilityKey}", func(writer http.ResponseWriter, reader *http.Request) {
+		vars := mux.Vars(reader)
+		groupID := vars["groupID"]
+		capabilityKey := vars["capabilityKey"]
+		//log.Log(log.Info, "Triggering capability", map[string]string{"group": groupID, "capability": capabilityKey})
+		var args devicestoretemplates.GroupCapabilityArgs
+		err := json.NewDecoder(reader.Body).Decode(&args)
+		if err != nil {
+			if err == io.EOF {
+				//No body was sent. That is fine
+				args = devicestoretemplates.GroupCapabilityArgs{}
+			} else {
+				http.Error(writer, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+		err = target.GTriggerCapability(groupID, capabilityKey, args)
+		if err != nil {
+			http.Error(writer, err.Error(), HTTPStatusCode(err))
+			return
+
+		}
+		http.Error(writer, "OK", http.StatusOK)
+	}).Methods("POST")
+
 	return router
 }
