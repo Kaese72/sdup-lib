@@ -34,7 +34,7 @@ func pushDeviceUpdate(config StoreEnrollmentConfig, device models.Device) error 
 		return err
 	}
 	logging.Info("Sending blob to device store", map[string]interface{}{"blob": string(bPayload)})
-	devicePayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-store/v0/devices", config.StoreURL), bytes.NewBuffer(bPayload))
+	devicePayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-ingest/v0/devices", config.StoreURL), bytes.NewBuffer(bPayload))
 	if err != nil {
 		logging.Error("Failed to create request", map[string]interface{}{"error": err.Error()})
 		return err
@@ -66,7 +66,7 @@ func pushGroupUpdate(config StoreEnrollmentConfig, group models.Group) error {
 		return err
 	}
 	logging.Info("Sending blob to device store", map[string]interface{}{"blob": string(bPayload)})
-	groupPayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-store/v0/groups", config.StoreURL), bytes.NewBuffer(bPayload))
+	groupPayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-ingest/v0/groups", config.StoreURL), bytes.NewBuffer(bPayload))
 	if err != nil {
 		logging.Error("Failed to create request", map[string]interface{}{"error": err.Error()})
 		return err
