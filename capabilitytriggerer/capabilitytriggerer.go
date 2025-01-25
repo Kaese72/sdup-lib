@@ -5,14 +5,14 @@ import (
 	"io"
 	"net/http"
 
-	devicestoretemplates "github.com/Kaese72/device-store/rest/models"
+	"github.com/Kaese72/device-store/ingestmodels"
 	"github.com/Kaese72/sdup-lib/sduptemplates"
 	"github.com/gorilla/mux"
 )
 
 type CapabilityTriggerer interface {
-	TriggerCapability(string, string, devicestoretemplates.DeviceCapabilityArgs) error
-	GTriggerCapability(string, string, devicestoretemplates.GroupCapabilityArgs) error
+	TriggerCapability(string, string, ingestmodels.DeviceCapabilityArgs) error
+	GTriggerCapability(string, string, ingestmodels.GroupCapabilityArgs) error
 }
 
 // HTTPStatusCode crudely translates error into http status code
@@ -33,12 +33,12 @@ func InitCapabilityTriggerMux(target CapabilityTriggerer) *mux.Router {
 		deviceID := vars["deviceID"]
 		capabilityKey := vars["capabilityKey"]
 		//log.Log(log.Info, "Triggering capability", map[string]string{"device": deviceID, "capability": capabilityKey})
-		var args devicestoretemplates.DeviceCapabilityArgs
+		var args ingestmodels.DeviceCapabilityArgs
 		err := json.NewDecoder(reader.Body).Decode(&args)
 		if err != nil {
 			if err == io.EOF {
 				//No body was sent. That is fine
-				args = devicestoretemplates.DeviceCapabilityArgs{}
+				args = ingestmodels.DeviceCapabilityArgs{}
 			} else {
 				http.Error(writer, err.Error(), http.StatusBadRequest)
 				return
@@ -58,12 +58,12 @@ func InitCapabilityTriggerMux(target CapabilityTriggerer) *mux.Router {
 		groupID := vars["groupID"]
 		capabilityKey := vars["capabilityKey"]
 		//log.Log(log.Info, "Triggering capability", map[string]string{"group": groupID, "capability": capabilityKey})
-		var args devicestoretemplates.GroupCapabilityArgs
+		var args ingestmodels.GroupCapabilityArgs
 		err := json.NewDecoder(reader.Body).Decode(&args)
 		if err != nil {
 			if err == io.EOF {
 				//No body was sent. That is fine
-				args = devicestoretemplates.GroupCapabilityArgs{}
+				args = ingestmodels.GroupCapabilityArgs{}
 			} else {
 				http.Error(writer, err.Error(), http.StatusBadRequest)
 				return

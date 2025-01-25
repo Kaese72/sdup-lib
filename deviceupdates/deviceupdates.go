@@ -7,13 +7,13 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Kaese72/device-store/rest/models"
+	"github.com/Kaese72/device-store/ingestmodels"
 	"github.com/Kaese72/huemie-lib/logging"
 )
 
 type Update struct {
-	Device *models.Device
-	Group  *models.Group
+	Device *ingestmodels.Device
+	Group  *ingestmodels.Group
 }
 
 type DeviceUpdater interface {
@@ -25,7 +25,7 @@ type StoreEnrollmentConfig struct {
 	AdapterKey string `mapstructure:"adapter-key"`
 }
 
-func pushDeviceUpdate(config StoreEnrollmentConfig, device models.Device) error {
+func pushDeviceUpdate(config StoreEnrollmentConfig, device ingestmodels.Device) error {
 	bPayload, err := json.Marshal(device)
 	if err != nil {
 		logging.Error("Failed to marshal struct to JSON to send to device store", map[string]interface{}{
@@ -57,7 +57,7 @@ func pushDeviceUpdate(config StoreEnrollmentConfig, device models.Device) error 
 	return nil
 }
 
-func pushGroupUpdate(config StoreEnrollmentConfig, group models.Group) error {
+func pushGroupUpdate(config StoreEnrollmentConfig, group ingestmodels.Group) error {
 	bPayload, err := json.Marshal(group)
 	if err != nil {
 		logging.Error("Failed to marshal struct to JSON to send to device store", map[string]interface{}{
