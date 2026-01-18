@@ -12,8 +12,8 @@ import (
 )
 
 type Update struct {
-	Device *ingestmodels.Device
-	Group  *ingestmodels.Group
+	Device *ingestmodels.IngestDevice
+	Group  *ingestmodels.IngestGroup
 }
 
 type DeviceUpdater interface {
@@ -25,7 +25,7 @@ type StoreEnrollmentConfig struct {
 	AdapterKey string `mapstructure:"adapter-key"`
 }
 
-func pushDeviceUpdate(config StoreEnrollmentConfig, device ingestmodels.Device) error {
+func pushDeviceUpdate(config StoreEnrollmentConfig, device ingestmodels.IngestDevice) error {
 	bPayload, err := json.Marshal(device)
 	if err != nil {
 		logging.Error("Failed to marshal struct to JSON to send to device store", map[string]interface{}{
@@ -57,7 +57,7 @@ func pushDeviceUpdate(config StoreEnrollmentConfig, device ingestmodels.Device) 
 	return nil
 }
 
-func pushGroupUpdate(config StoreEnrollmentConfig, group ingestmodels.Group) error {
+func pushGroupUpdate(config StoreEnrollmentConfig, group ingestmodels.IngestGroup) error {
 	bPayload, err := json.Marshal(group)
 	if err != nil {
 		logging.Error("Failed to marshal struct to JSON to send to device store", map[string]interface{}{

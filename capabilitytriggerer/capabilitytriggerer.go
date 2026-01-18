@@ -11,8 +11,8 @@ import (
 )
 
 type CapabilityTriggerer interface {
-	TriggerCapability(string, string, ingestmodels.DeviceCapabilityArgs) error
-	GTriggerCapability(string, string, ingestmodels.GroupCapabilityArgs) error
+	TriggerCapability(string, string, ingestmodels.IngestDeviceCapabilityArgs) error
+	GTriggerCapability(string, string, ingestmodels.IngestGroupCapabilityArgs) error
 }
 
 // HTTPStatusCode crudely translates error into http status code
@@ -33,12 +33,12 @@ func InitCapabilityTriggerMux(target CapabilityTriggerer) *mux.Router {
 		deviceID := vars["deviceID"]
 		capabilityKey := vars["capabilityKey"]
 		//log.Log(log.Info, "Triggering capability", map[string]string{"device": deviceID, "capability": capabilityKey})
-		var args ingestmodels.DeviceCapabilityArgs
+		var args ingestmodels.IngestDeviceCapabilityArgs
 		err := json.NewDecoder(reader.Body).Decode(&args)
 		if err != nil {
 			if err == io.EOF {
 				//No body was sent. That is fine
-				args = ingestmodels.DeviceCapabilityArgs{}
+				args = ingestmodels.IngestDeviceCapabilityArgs{}
 			} else {
 				http.Error(writer, err.Error(), http.StatusBadRequest)
 				return
@@ -58,12 +58,12 @@ func InitCapabilityTriggerMux(target CapabilityTriggerer) *mux.Router {
 		groupID := vars["groupID"]
 		capabilityKey := vars["capabilityKey"]
 		//log.Log(log.Info, "Triggering capability", map[string]string{"group": groupID, "capability": capabilityKey})
-		var args ingestmodels.GroupCapabilityArgs
+		var args ingestmodels.IngestGroupCapabilityArgs
 		err := json.NewDecoder(reader.Body).Decode(&args)
 		if err != nil {
 			if err == io.EOF {
 				//No body was sent. That is fine
-				args = ingestmodels.GroupCapabilityArgs{}
+				args = ingestmodels.IngestGroupCapabilityArgs{}
 			} else {
 				http.Error(writer, err.Error(), http.StatusBadRequest)
 				return
