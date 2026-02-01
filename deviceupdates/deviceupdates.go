@@ -21,8 +21,8 @@ type DeviceUpdater interface {
 }
 
 type StoreEnrollmentConfig struct {
-	StoreURL   string `mapstructure:"store"`
-	AdapterKey string `mapstructure:"adapter-key"`
+	BaseURL string `mapstructure:"store"`
+	Token   string `mapstructure:"token"`
 }
 
 func pushDeviceUpdate(config StoreEnrollmentConfig, device ingestmodels.IngestDevice) error {
@@ -34,12 +34,12 @@ func pushDeviceUpdate(config StoreEnrollmentConfig, device ingestmodels.IngestDe
 		return err
 	}
 	logging.Info("Sending blob to device store", map[string]interface{}{"blob": string(bPayload)})
-	devicePayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-ingest/v0/devices", config.StoreURL), bytes.NewBuffer(bPayload))
+	devicePayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-ingest/v0/devices", config.BaseURL), bytes.NewBuffer(bPayload))
 	if err != nil {
 		logging.Error("Failed to create request", map[string]interface{}{"error": err.Error()})
 		return err
 	}
-	devicePayload.Header.Set("Bridge-Key", config.AdapterKey)
+	devicePayload.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.Token))
 	resp, err := http.DefaultClient.Do(
 		devicePayload,
 	)
@@ -66,12 +66,12 @@ func pushGroupUpdate(config StoreEnrollmentConfig, group ingestmodels.IngestGrou
 		return err
 	}
 	logging.Info("Sending blob to device store", map[string]interface{}{"blob": string(bPayload)})
-	groupPayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-ingest/v0/groups", config.StoreURL), bytes.NewBuffer(bPayload))
+	groupPayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-ingest/v0/groups", config.BaseURL), bytes.NewBuffer(bPayload))
 	if err != nil {
 		logging.Error("Failed to create request", map[string]interface{}{"error": err.Error()})
 		return err
 	}
-	groupPayload.Header.Set("Bridge-Key", config.AdapterKey)
+	groupPayload.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.Token))
 	resp, err := http.DefaultClient.Do(
 		groupPayload,
 	)
@@ -99,11 +99,11 @@ func InitDeviceUpdater(config StoreEnrollmentConfig, updater DeviceUpdater) erro
 		for update := range updates {
 			if update.Device != nil {
 				if err := pushDeviceUpdate(config, *update.Device); err != nil {
-					logging.Error("Failed to send device group update", map[string]interface{}{"error": err.Error()})
+					logging.Error("Failed to send device update", map[string]interface{}{"error": err.Error()})
 				}
 			} else if update.Group != nil {
 				if err := pushGroupUpdate(config, *update.Group); err != nil {
-					logging.Error("Failed to send device group update", map[string]interface{}{"error": err.Error()})
+					logging.Error("Failed to send group update", map[string]interface{}{"error": err.Error()})
 				}
 			} else {
 				logging.Error("Failed to send device group update", map[string]interface{}{"error": "No device or group in update"})
