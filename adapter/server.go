@@ -10,17 +10,21 @@ import (
 )
 
 type Config struct {
-	HttpServer struct {
-		Port    int    `mapstructure:"port" doc:"the port to listen on for HTTP requests"`
-		Address string `mapstructure:"address" default:"0.0.0.0" doc:"the address to listen on for HTTP requests"`
-	} `mapstructure:"http-server"`
-	Enroll struct {
-		// Store is the URL of the device-store this adapter will send updates to
-		Store string `mapstructure:"store"`
-		// Token is the JWT token provided by the adapter-attendant that identifies this adapter
-		Token string `mapstructure:"token"`
-	} `mapstructure:"enroll"`
-	DebugLogging bool `mapstructure:"debug-logging" default:"false" doc:"if true, the adapter will log debug information"`
+	Huemie struct {
+		Server struct {
+			Http struct {
+				Port    int    `mapstructure:"port" doc:"the port to listen on for HTTP requests"`
+				Address string `mapstructure:"address" default:"0.0.0.0" doc:"the address to listen on for HTTP requests"`
+			} `mapstructure:"http"`
+		} `mapstructure:"server"`
+		Enroll struct {
+			// Store is the URL of the device-store this adapter will send updates to
+			Store string `mapstructure:"store"`
+			// Token is the JWT token provided by the adapter-attendant that identifies this adapter
+			Token string `mapstructure:"token"`
+		} `mapstructure:"enroll"`
+		DebugLogging bool `mapstructure:"debug-logging" default:"false" doc:"if true, the adapter will log debug information"`
+	} `mapstructure:"huemie"`
 }
 
 type InitializableUpdater interface {
@@ -36,20 +40,20 @@ func readConfig() (Config, error) {
 	myVip.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	// # API configuration
 	// Listen address
-	myVip.BindEnv("http-server.address")
-	myVip.SetDefault("http-server.address", "0.0.0.0")
+	myVip.BindEnv("huemie.server.http.address")
+	myVip.SetDefault("huemie.server.http.address", "0.0.0.0")
 	// Listen port
-	myVip.BindEnv("http-server.port")
-	myVip.SetDefault("http-server.port", 8080)
+	myVip.BindEnv("huemie.server.http.port")
+	myVip.SetDefault("huemie.server.http.port", 8080)
 	// # Enroll Config
 	// Device store to send updates to
-	myVip.BindEnv("enroll.store")
+	myVip.BindEnv("huemie.enroll.store")
 	// Token used to authenticate towards the device store
-	myVip.BindEnv("enroll.token")
+	myVip.BindEnv("huemie.enroll.token")
 
 	// # Logging
-	myVip.BindEnv("debug-logging")
-	myVip.SetDefault("debug-logging", false)
+	myVip.BindEnv("huemie.debug-logging")
+	myVip.SetDefault("huemie.debug-logging", false)
 
 	var conf Config
 	err := myVip.Unmarshal(&conf)
@@ -58,22 +62,22 @@ func readConfig() (Config, error) {
 		return Config{}, err
 	}
 	//Logger assumed initiated
-	logging.SetDebugLogging(conf.DebugLogging)
+	logging.SetDebugLogging(conf.Huemie.DebugLogging)
 	logging.Debug("Debug logging enabled")
-	if conf.Enroll.Store != "" && conf.Enroll.Token == "" {
-		err := fmt.Errorf("enroll.token is required when enroll.store is set")
+	if conf.Huemie.Enroll.Store != "" && conf.Huemie.Enroll.Token == "" {
+		err := fmt.Errorf("huemie.enroll.token is required when huemie.enroll.store is set")
 		logging.Error(err.Error())
 		return Config{}, err
 	}
 	// We allow disabling the updates to the device store by not setting the enroll.store,
 	// but if it is set we require a token to be set as well to avoid misconfiguration
-	if conf.HttpServer.Port <= 0 || conf.HttpServer.Port > 65535 {
-		err := fmt.Errorf("http-server.port must be a valid port number")
+	if conf.Huemie.Server.Http.Port <= 0 || conf.Huemie.Server.Http.Port > 65535 {
+		err := fmt.Errorf("huemie.server.http.port must be a valid port number")
 		logging.Error(err.Error())
 		return Config{}, err
 	}
-	if conf.HttpServer.Address == "" {
-		err := fmt.Errorf("http-server.address is required")
+	if conf.Huemie.Server.Http.Address == "" {
+		err := fmt.Errorf("huemie.server.http.address is required")
 		logging.Error(err.Error())
 		return Config{}, err
 	}
@@ -95,9 +99,9 @@ func StartAdapter(target InitializableUpdater) error {
 	if err != nil {
 		return err
 	}
-	go deviceUpdater(conf.Enroll.Store, conf.Enroll.Token, updates)
-	logging.Info("Starting HTTP server", map[string]any{"address": conf.HttpServer.Address, "port": conf.HttpServer.Port})
-	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.HttpServer.Address, conf.HttpServer.Port), router); err != nil {
+	go deviceUpdater(conf.Huemie.Enroll.Store, conf.Huemie.Enroll.Token, updates)
+	logging.Info("Starting HTTP server", map[string]any{"address": conf.Huemie.Server.Http.Address, "port": conf.Huemie.Server.Http.Port})
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Huemie.Server.Http.Address, conf.Huemie.Server.Http.Port), router); err != nil {
 		return err
 	}
 	return nil
