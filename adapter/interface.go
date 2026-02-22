@@ -23,6 +23,10 @@ type AdapterError struct {
 	Code int `json:"-"`
 }
 
+type AdapterSuccess struct {
+	Message string `json:"message"`
+}
+
 func (e AdapterError) StatusError() huma.StatusError {
 	whitelistedStatusCodes := []int{
 		http.StatusBadRequest,
@@ -62,7 +66,9 @@ func createAdapterHuma(api huma.API, adapter any) {
 			DeviceID      string                                   `path:"deviceID" doc:"the device to trigger the capability for"`
 			CapabilityKey string                                   `path:"capabilityKey" doc:"the capability to trigger"`
 			Body          *ingestmodels.IngestDeviceCapabilityArgs `body:""`
-		}) (*struct{}, error) {
+		}) (*struct {
+			Body *AdapterSuccess
+		}, error) {
 			args := ingestmodels.IngestDeviceCapabilityArgs{}
 			if input.Body != nil {
 				args = *input.Body
@@ -71,7 +77,13 @@ func createAdapterHuma(api huma.API, adapter any) {
 			if err != nil {
 				return nil, err.StatusError()
 			}
-			return &struct{}{}, nil
+			return &struct {
+				Body *AdapterSuccess
+			}{
+				Body: &AdapterSuccess{
+					Message: "Capability triggered successfully",
+				},
+			}, nil
 		})
 	} else {
 		logging.Info("Adapter is NOT applicable for DeviceTriggerCapability, skipping endpoint creation")
@@ -84,7 +96,9 @@ func createAdapterHuma(api huma.API, adapter any) {
 			GroupID       string                                  `path:"groupID" doc:"the group to trigger the capability for"`
 			CapabilityKey string                                  `path:"capabilityKey" doc:"the capability to trigger"`
 			Body          *ingestmodels.IngestGroupCapabilityArgs `body:""`
-		}) (*struct{}, error) {
+		}) (*struct {
+			Body *AdapterSuccess
+		}, error) {
 			args := ingestmodels.IngestGroupCapabilityArgs{}
 			if input.Body != nil {
 				args = *input.Body
@@ -93,7 +107,13 @@ func createAdapterHuma(api huma.API, adapter any) {
 			if err != nil {
 				return nil, err.StatusError()
 			}
-			return &struct{}{}, nil
+			return &struct {
+				Body *AdapterSuccess
+			}{
+				Body: &AdapterSuccess{
+					Message: "Capability triggered successfully",
+				},
+			}, nil
 		})
 	} else {
 		logging.Info("Adapter is NOT applicable for GroupTriggerCapability, skipping endpoint creation")
@@ -101,12 +121,12 @@ func createAdapterHuma(api huma.API, adapter any) {
 	huma.Get(api, "/abilities", func(ctx context.Context, input *struct{}) (*struct {
 		Body *struct {
 			Abilities []string `json:"abilities"`
-		} `json:"body"`
+		}
 	}, error) {
 		return &struct {
 			Body *struct {
 				Abilities []string `json:"abilities"`
-			} `json:"body"`
+			}
 		}{
 			Body: &struct {
 				Abilities []string `json:"abilities"`
