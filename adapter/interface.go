@@ -11,6 +11,7 @@ import (
 
 	"github.com/Kaese72/device-store/ingestmodels"
 	"github.com/Kaese72/huemie-lib/logging"
+	"github.com/Kaese72/sdup-lib/retry"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humamux"
 	"github.com/gorilla/mux"
@@ -142,7 +143,46 @@ type Update struct {
 	Group  *ingestmodels.IngestGroup
 }
 
-func pushDeviceUpdate(deviceStoreBaseUrl string, token string, device ingestmodels.IngestDevice) error {
+// ingestWithRetry POSTs payload to the device store ingest path, retrying
+// transient failures (connection refused/reset, timeouts, 408/429, 5xx) with
+// exponential backoff. A malformed request or a non-retryable 4xx stops
+// immediately. It blocks until the send succeeds or the retry budget in
+// retryCfg is exhausted.
+func ingestWithRetry(retryCfg retry.Config, url string, token string, payload []byte) error {
+	logging.Info("Sending blob to device store", map[string]interface{}{"blob": string(payload)})
+	return retry.Do(context.Background(), retryCfg, func(ctx context.Context, attempt int) error {
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payload))
+		if err != nil {
+			logging.Error("Failed to create request", map[string]interface{}{"error": err.Error()})
+			return retry.Permanent(err)
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			logging.Error("Failed to http.Do request", map[string]interface{}{"error": err.Error(), "attempt": attempt})
+			return err
+		}
+		defer resp.Body.Close()
+		respBody, _ := io.ReadAll(resp.Body)
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			logging.Info("Sent payload to device store", map[string]interface{}{"Response Code": resp.Status, "Response Body": string(respBody)})
+			return nil
+		}
+
+		statusErr := fmt.Errorf("device store returned %s: %s", resp.Status, string(respBody))
+		if resp.StatusCode == http.StatusRequestTimeout || resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			logging.Error("Device store rejected update, will retry", map[string]interface{}{"error": statusErr.Error(), "attempt": attempt})
+			return statusErr
+		}
+		logging.Error("Device store rejected update, not retrying", map[string]interface{}{"error": statusErr.Error()})
+		return retry.Permanent(statusErr)
+	})
+}
+
+func pushDeviceUpdate(deviceStoreBaseUrl string, token string, retryCfg retry.Config, device ingestmodels.IngestDevice) error {
 	bPayload, err := json.Marshal(device)
 	if err != nil {
 		logging.Error("Failed to marshal struct to JSON to send to device store", map[string]interface{}{
@@ -150,31 +190,10 @@ func pushDeviceUpdate(deviceStoreBaseUrl string, token string, device ingestmode
 		})
 		return err
 	}
-	logging.Info("Sending blob to device store", map[string]interface{}{"blob": string(bPayload)})
-	devicePayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-ingest/v0/devices", deviceStoreBaseUrl), bytes.NewBuffer(bPayload))
-	if err != nil {
-		logging.Error("Failed to create request", map[string]interface{}{"error": err.Error()})
-		return err
-	}
-	devicePayload.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	resp, err := http.DefaultClient.Do(
-		devicePayload,
-	)
-	if err != nil {
-		logging.Error("Failed to http.Do request", map[string]interface{}{"error": err.Error()})
-		return err
-	}
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logging.Error("Failed to read response body on response", map[string]interface{}{"error": err.Error()})
-		return err
-	}
-
-	logging.Info("Sent payload to device store", map[string]interface{}{"Response Code": resp.Status, "Response Body": string(respBody)})
-	return nil
+	return ingestWithRetry(retryCfg, fmt.Sprintf("%s/device-ingest/v0/devices", deviceStoreBaseUrl), token, bPayload)
 }
 
-func pushGroupUpdate(baseUrl string, token string, group ingestmodels.IngestGroup) error {
+func pushGroupUpdate(baseUrl string, token string, retryCfg retry.Config, group ingestmodels.IngestGroup) error {
 	bPayload, err := json.Marshal(group)
 	if err != nil {
 		logging.Error("Failed to marshal struct to JSON to send to device store", map[string]interface{}{
@@ -182,43 +201,22 @@ func pushGroupUpdate(baseUrl string, token string, group ingestmodels.IngestGrou
 		})
 		return err
 	}
-	logging.Info("Sending blob to device store", map[string]interface{}{"blob": string(bPayload)})
-	groupPayload, err := http.NewRequest("POST", fmt.Sprintf("%s/device-ingest/v0/groups", baseUrl), bytes.NewBuffer(bPayload))
-	if err != nil {
-		logging.Error("Failed to create request", map[string]interface{}{"error": err.Error()})
-		return err
-	}
-	groupPayload.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	resp, err := http.DefaultClient.Do(
-		groupPayload,
-	)
-	if err != nil {
-		logging.Error("Failed to http.Do request", map[string]interface{}{"error": err.Error()})
-		return err
-	}
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logging.Error("Failed to read response body on response", map[string]interface{}{"error": err.Error()})
-		return err
-	}
-
-	logging.Info("Sent payload to device store", map[string]interface{}{"Response Code": resp.Status, "Response Body": string(respBody)})
-	return nil
+	return ingestWithRetry(retryCfg, fmt.Sprintf("%s/device-ingest/v0/groups", baseUrl), token, bPayload)
 }
 
 // deviceUpdater is what takes the updates from the channel and pushes them to the device store
-func deviceUpdater(deviceStoreBaseUrl string, token string, updateChan chan Update) {
+func deviceUpdater(deviceStoreBaseUrl string, token string, retryCfg retry.Config, updateChan chan Update) {
 	for update := range updateChan {
 		if deviceStoreBaseUrl == "" {
 			logging.Debug("No device store URL configured, skipping update", map[string]any{"update": update})
 			continue
 		}
 		if update.Device != nil {
-			if err := pushDeviceUpdate(deviceStoreBaseUrl, token, *update.Device); err != nil {
+			if err := pushDeviceUpdate(deviceStoreBaseUrl, token, retryCfg, *update.Device); err != nil {
 				logging.Error("Failed to send device update", map[string]any{"error": err.Error()})
 			}
 		} else if update.Group != nil {
-			if err := pushGroupUpdate(deviceStoreBaseUrl, token, *update.Group); err != nil {
+			if err := pushGroupUpdate(deviceStoreBaseUrl, token, retryCfg, *update.Group); err != nil {
 				logging.Error("Failed to send group update", map[string]any{"error": err.Error()})
 			}
 		} else {

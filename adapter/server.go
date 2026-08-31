@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Kaese72/huemie-lib/logging"
+	"github.com/Kaese72/sdup-lib/retry"
 	"github.com/spf13/viper"
 )
 
@@ -23,6 +25,13 @@ type Config struct {
 			// Token is the JWT token provided by the adapter-attendant that identifies this adapter
 			Token string `mapstructure:"token"`
 		} `mapstructure:"enroll"`
+		// Updates tunes the exponential-backoff retry applied to every device
+		// and group update pushed to the device store.
+		Updates struct {
+			RetryMaxAttempts int `mapstructure:"retry-max-attempts" default:"8" doc:"total attempts per update push, including the first; <=0 means retry until the process stops"`
+			RetryBaseDelayMs int `mapstructure:"retry-base-delay-ms" default:"500" doc:"backoff before the second attempt, in milliseconds"`
+			RetryMaxDelayMs  int `mapstructure:"retry-max-delay-ms" default:"30000" doc:"cap on any single backoff wait, in milliseconds"`
+		} `mapstructure:"updates"`
 		DebugLogging bool `mapstructure:"debug-logging" default:"false" doc:"if true, the adapter will log debug information"`
 	} `mapstructure:"huemie"`
 }
@@ -50,6 +59,14 @@ func readConfig() (Config, error) {
 	myVip.BindEnv("huemie.enroll.store")
 	// Token used to authenticate towards the device store
 	myVip.BindEnv("huemie.enroll.token")
+
+	// # Update push retry (exponential backoff towards the device store)
+	myVip.BindEnv("huemie.updates.retry-max-attempts")
+	myVip.SetDefault("huemie.updates.retry-max-attempts", 8)
+	myVip.BindEnv("huemie.updates.retry-base-delay-ms")
+	myVip.SetDefault("huemie.updates.retry-base-delay-ms", 500)
+	myVip.BindEnv("huemie.updates.retry-max-delay-ms")
+	myVip.SetDefault("huemie.updates.retry-max-delay-ms", 30000)
 
 	// # Logging
 	myVip.BindEnv("huemie.debug-logging")
@@ -99,7 +116,14 @@ func StartAdapter(target InitializableUpdater) error {
 	if err != nil {
 		return err
 	}
-	go deviceUpdater(conf.Huemie.Enroll.Store, conf.Huemie.Enroll.Token, updates)
+	retryCfg := retry.Config{
+		MaxAttempts: conf.Huemie.Updates.RetryMaxAttempts,
+		BaseDelay:   time.Duration(conf.Huemie.Updates.RetryBaseDelayMs) * time.Millisecond,
+		MaxDelay:    time.Duration(conf.Huemie.Updates.RetryMaxDelayMs) * time.Millisecond,
+		Multiplier:  2,
+		Jitter:      0.2,
+	}
+	go deviceUpdater(conf.Huemie.Enroll.Store, conf.Huemie.Enroll.Token, retryCfg, updates)
 	logging.Info("Starting HTTP server", map[string]any{"address": conf.Huemie.Server.Http.Address, "port": conf.Huemie.Server.Http.Port})
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Huemie.Server.Http.Address, conf.Huemie.Server.Http.Port), router); err != nil {
 		return err
